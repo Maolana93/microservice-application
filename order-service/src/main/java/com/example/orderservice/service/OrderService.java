@@ -17,11 +17,11 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class OrderService {
     private final OrderRepository orderRepository;
 
-    private final WebClient webClient;
+    private final WebClient.Builder webClientBuilder;
 
     public void placeOrder(OrderRequest orderRequest){
         Order order = new Order();
@@ -32,17 +32,18 @@ public class OrderService {
                 .map(this::mapToDto)
                 .toList();
 
-        order.setOrderLineItems(orderLineItems);
-        List<String> SkuCodes = order.getOrderLineItems().stream()
+        order.setOrderLineItemsList(orderLineItems);
+
+        List<String> skuCodes = order.getOrderLineItemsList().stream()
                 .map(OrderLineItems::getSkuCode)
                 .toList();
 
 
         //call inventory Service and place order
 
-       InventoryResponse[] inventoryResponsesArray = webClient.get()
-                .uri("http://localhost:8082/api/inventory",
-                        urlBuilder -> urlBuilder.queryParam("skuCode",SkuCodes).build())
+       InventoryResponse[] inventoryResponsesArray = webClientBuilder.build().get()
+                .uri("http://inventory-service/api/inventory",
+                        urlBuilder -> urlBuilder.queryParam("skuCode",skuCodes).build())
                 .retrieve()
                 .bodyToMono(InventoryResponse[].class )
                 .block();
